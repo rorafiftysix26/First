@@ -902,7 +902,7 @@ class App(QMainWindow):
         faq_items = [
             ("Frida 连接失败", "请确认当前版本是否在WMPF版本区间内,如无法解决建议安装建议版本。"),
             ("DevTools 打开内容为空", "点击启动调试前请勿打开小程序, 启动调试打开后再次启动小程序即可。"),
-            (r"Frida 已显示连接，但小程序端显示未连接/或步骤确认没问题且无法断点", r"若操作顺序无误，建议先彻底卸载微信并重启电脑-·如有重要聊天记录请提前备份·-。删除路径C:\Users\用户名\AppData\Roaming\Tencent\xwechat\XPlugin\Plugins\RadiumWMPF下所有以数字命名的文件夹,再次重启电脑后,安装微信 4.1.0.30 版本。安装完成后检查上述路径，确认文件夹编号为 16389。"),
+            (r"Frida 已显示连接，但小程序端显示未连接或步骤确认没问题且无法断点", r"若操作顺序无误，建议先彻底卸载微信并重启电脑-·如有重要聊天记录请提前备份·-。删除路径C:\Users\用户名\AppData\Roaming\Tencent\xwechat\XPlugin\Plugins\RadiumWMPF下所有以数字命名的文件夹,再次重启电脑后,安装微信 4.1.0.30 版本。安装完成后检查上述路径，确认文件夹编号为 16389。"),
         ]
 
         for title, solution in faq_items:
