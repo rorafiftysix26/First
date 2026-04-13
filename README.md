@@ -149,8 +149,8 @@ pyinstaller WMPFDebugger.spec
 
 ---
 ## 交流群
-
-![微信图片_20260408212151_1256_3](https://s1.galgame.fun/imgb/u0/20260408_69d6567d777a9.jpg)
+群满200变成手动挡了。加我拉
+![1db5b1b2699ae709a191207cf97dcf4b](https://s1.galgame.fun/imgb/u55/20260413_69dcaf1310fc4.jpg)
 
 ## 免责声明
 
