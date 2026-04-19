@@ -1,8 +1,11 @@
 {
   "theme": "dark",
-  "debug_port": "9421",
   "cdp_port": "62000",
   "debug_main": false,
   "debug_frida": false,
-  "selected_preload_scripts": []
+  "extract_packages_dir": "",
+  "extract_custom_patterns": {},
+  "auto_decompile": false,
+  "auto_scan": false,
+  "global_hook_scripts": []
 }

@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
     QTreeWidget, QTreeWidgetItem, QProgressBar, QStackedWidget,
     QMenu, QHeaderView, QAbstractItemView, QFileDialog, QInputDialog,
     QTabWidget, QTableWidget, QTableWidgetItem, QDialog, QSizePolicy,
+    QCheckBox,
 )
 
 from src.cli import CliOptions, CDP_PORT
@@ -29,7 +30,6 @@ from src.logger import Logger
 from src.engine import DebugEngine
 from src.navigator import MiniProgramNavigator
 from src.cloud_audit import CloudAuditor
-from src.userscript import load_userscripts_by_files
 
 # ══════════════════════════════════════════
 #  配色
@@ -71,7 +71,6 @@ if getattr(sys, 'frozen', False):
     _BASE_DIR = os.path.dirname(sys.executable)
 _CFG_FILE = os.path.join(_BASE_DIR, "gui_config.json")
 
-os.makedirs(os.path.join(_BASE_DIR, "userscripts"), exist_ok=True)
 os.makedirs(os.path.join(_BASE_DIR, "hook_scripts"), exist_ok=True)
 
 
@@ -411,6 +410,28 @@ def build_qss(tn):
         margin: 4px 8px;
     }}
 
+    /* ── QCheckBox ── */
+    QCheckBox {{
+        color: {c['text1']};
+        background: transparent;
+        spacing: 5px;
+    }}
+    QCheckBox::indicator {{
+        width: 14px;
+        height: 14px;
+        border-radius: 3px;
+        border: 1px solid {c['border2']};
+        background: {c['input']};
+    }}
+    QCheckBox::indicator:checked {{
+        background: {c['accent']};
+        border-color: {c['accent']};
+        image: none;
+    }}
+    QCheckBox::indicator:hover {{
+        border-color: {c['accent']};
+    }}
+
     /* ── Hook 行 ── */
     QFrame.hook_row {{
         background: {row_bg};
@@ -638,10 +659,13 @@ class App(QMainWindow):
         self._cancel_ev = None
         self._route_poll_id = None
         self._all_routes = []
+        self._flat_routes = []  # tree visual order for prev/next
         self._cloud_scan_active = False
         self._cloud_scan_poll_timer = None
         self._redirect_guard_on = False
         self._hook_injected = set()
+        self._global_hook_scripts = set(self._cfg.get("global_hook_scripts", []))
+        self._global_inject_gen = 0
         self._blocked_seen = 0
         self._miniapp_connected = False
         self._sb_fetch_gen = 0
@@ -650,8 +674,6 @@ class App(QMainWindow):
         self._sts_q = queue.Queue()
         self._rte_q = queue.Queue()
         self._cld_q = queue.Queue()
-
-        self._selected_preload = list(self._cfg.get("selected_preload_scripts", []))
         self._nav_route_idx = -1
 
         self._sb_items = {}
@@ -865,30 +887,6 @@ class App(QMainWindow):
         c1_lay.addLayout(row1)
 
         lay.addWidget(c1)
-
-        # Card 2: 前加载脚本
-        c2 = _make_card()
-        c2_lay = QVBoxLayout(c2)
-        c2_lay.setContentsMargins(16, 10, 16, 10)
-        c2_lay.setSpacing(4)
-        hdr_row = QHBoxLayout()
-        hdr_row.addWidget(_make_label("前加载脚本", bold=True))
-        hdr_row.addWidget(_make_label("(启动调试前可用)", muted=True))
-        hdr_row.addStretch()
-        self._btn_preload_refresh = _make_btn("刷新", self._preload_refresh)
-        hdr_row.addWidget(self._btn_preload_refresh)
-        c2_lay.addLayout(hdr_row)
-        preload_scroll = QScrollArea()
-        preload_scroll.setWidgetResizable(True)
-        preload_scroll.setMaximumHeight(160)
-        preload_inner = QWidget()
-        self._preload_container = QVBoxLayout(preload_inner)
-        self._preload_container.setSpacing(2)
-        self._preload_container.setContentsMargins(0, 0, 0, 0)
-        preload_scroll.setWidget(preload_inner)
-        c2_lay.addWidget(preload_scroll)
-        lay.addWidget(c2)
-        self._preload_refresh()
 
         # Action row
         ar = QHBoxLayout()
@@ -1143,12 +1141,26 @@ class App(QMainWindow):
             name_lbl.setFont(QFont(_FN, 10))
             row_lay.addWidget(name_lbl, 1)
 
+            is_global = fn in self._global_hook_scripts
             injected = fn in self._hook_injected
-            status_lbl = QLabel("● 已注入" if injected else "○ 未注入")
+            if is_global and injected:
+                status_text = "全局 ● 已注入"
+            elif is_global:
+                status_text = "全局 ○ 待注入"
+            elif injected:
+                status_text = "● 已注入"
+            else:
+                status_text = "○ 未注入"
+            status_lbl = QLabel(status_text)
             c = _TH[self._tn]
             status_lbl.setStyleSheet(f"color: {c['success'] if injected else c['text3']};")
             row_lay.addWidget(status_lbl)
             self._hook_status_lbls[fn] = status_lbl
+
+            global_cb = QCheckBox("全局")
+            global_cb.setChecked(is_global)
+            global_cb.toggled.connect(lambda checked, f=fn: self._hook_global_toggle(f, checked))
+            row_lay.addWidget(global_cb)
 
             inject_btn = _make_btn("注入", lambda checked=False, f=fn: self._hook_inject(f))
             row_lay.addWidget(inject_btn)
@@ -1190,8 +1202,57 @@ class App(QMainWindow):
         c = _TH[self._tn]
         lbl = self._hook_status_lbls.get(filename)
         if lbl:
-            lbl.setText("● 已注入" if injected else "○ 未注入")
-            lbl.setStyleSheet(f"color: {c['success'] if injected else c['text3']};")
+            is_global = filename in self._global_hook_scripts
+            if is_global and injected:
+                lbl.setText("全局 ● 已注入")
+                lbl.setStyleSheet(f"color: {c['success']};")
+            elif is_global:
+                lbl.setText("全局 ○ 待注入")
+                lbl.setStyleSheet(f"color: {c['text3']};")
+            elif injected:
+                lbl.setText("● 已注入")
+                lbl.setStyleSheet(f"color: {c['success']};")
+            else:
+                lbl.setText("○ 未注入")
+                lbl.setStyleSheet(f"color: {c['text3']};")
+
+    def _hook_global_toggle(self, filename, checked):
+        if checked:
+            self._global_hook_scripts.add(filename)
+        else:
+            self._global_hook_scripts.discard(filename)
+        injected = filename in self._hook_injected
+        self._hook_update_status(filename, injected)
+        self._auto_save()
+
+    def _hook_auto_inject_globals(self):
+        """Auto-inject all global hook scripts (called when miniapp stabilizes)."""
+        if not self._engine or not self._loop or not self._loop.is_running():
+            return
+        hook_dir = os.path.join(_BASE_DIR, "hook_scripts")
+        for fn in list(self._global_hook_scripts):
+            if fn in self._hook_injected:
+                continue
+            filepath = os.path.join(hook_dir, fn)
+            if not os.path.isfile(filepath):
+                continue
+            try:
+                with open(filepath, "r", encoding="utf-8") as f:
+                    source = f.read()
+            except Exception:
+                continue
+            asyncio.run_coroutine_threadsafe(
+                self._ahook_inject(fn, source), self._loop)
+
+    def _do_global_inject(self, gen):
+        """独立的全局注入定时回调，只在小程序连接变化时触发，不受 CDP 等影响。"""
+        if gen != self._global_inject_gen:
+            return
+        if not self._miniapp_connected:
+            return
+        if self._global_hook_scripts:
+            self._hook_auto_inject_globals()
+            self._log_add("info", "[Hook] 自动注入全局脚本")
 
     # ── 云扫描 ──
 
@@ -1342,11 +1403,11 @@ class App(QMainWindow):
         # 自动反编译 & 自动提取 开关
         func_row.addWidget(_make_label("自动反编译"))
         self._tog_auto_dec = ToggleSwitch(self._cfg.get("auto_decompile", False))
-        self._tog_auto_dec.toggled.connect(lambda v: (self._auto_save(), self._ext_auto_process_pending() if v else None))
+        self._tog_auto_dec.toggled.connect(lambda v: self._auto_save())
         func_row.addWidget(self._tog_auto_dec)
         func_row.addWidget(_make_label("自动提取"))
         self._tog_auto_scan = ToggleSwitch(self._cfg.get("auto_scan", False))
-        self._tog_auto_scan.toggled.connect(lambda v: (self._auto_save(), self._ext_auto_process_pending() if v else None))
+        self._tog_auto_scan.toggled.connect(lambda v: self._auto_save())
         func_row.addWidget(self._tog_auto_scan)
         main_lay.addLayout(func_row)
 
@@ -1688,7 +1749,12 @@ class App(QMainWindow):
         c = _TH[self._tn]
         output_base = os.path.join(_BASE_DIR, "output")
 
-        for appid, pkgs in sorted(appid_groups.items()):
+        # 按最新包文件的修改时间排序，最旧的先插入，最新的最后插入到位置0因此显示在最上面
+        def _appid_mtime(item):
+            _, pkgs = item
+            return max((os.path.getmtime(p["path"]) for p in pkgs if os.path.exists(p["path"])), default=0)
+
+        for appid, pkgs in sorted(appid_groups.items(), key=_appid_mtime):
             row = QFrame()
             row.setStyleSheet(
                 f"QFrame {{ background: {c['input']}; border-radius: 8px; }}"
@@ -1763,8 +1829,8 @@ class App(QMainWindow):
                 "btn_view": btn_view, "btn_del": btn_del, "lbl_name": lbl_name,
             }
 
-            # 插入在 stretch 之前
-            self._ext_list_layout.insertWidget(self._ext_list_layout.count() - 1, row)
+            # 插入在最前面（最新的在上面）
+            self._ext_list_layout.insertWidget(0, row)
 
         self._ext_status_lbl.setText(f"发现 {len(appid_groups)} 个小程序")
         # 记录当前已知 appid 集合 (供目录监控用)
@@ -2733,47 +2799,6 @@ class App(QMainWindow):
         self._page_map["logs"] = self._stack.count() - 1
 
     # ──────────────────────────────────
-    #  前加载脚本
-    # ──────────────────────────────────
-
-    def _preload_refresh(self):
-        while self._preload_container.count():
-            item = self._preload_container.takeAt(0)
-            w = item.widget()
-            if w:
-                w.deleteLater()
-
-        scripts_dir = os.path.join(_BASE_DIR, "userscripts")
-        js_files = sorted(f for f in os.listdir(scripts_dir) if f.endswith(".js")) if os.path.isdir(scripts_dir) else []
-
-        if not js_files:
-            lbl = QLabel("userscripts/ 目录下无 .js 文件")
-            lbl.setProperty("class", "muted")
-            self._preload_container.addWidget(lbl)
-            return
-
-        for fn in js_files:
-            row = QHBoxLayout()
-            tog = ToggleSwitch(fn in self._selected_preload)
-            tog.setFixedSize(36, 18)
-            tog.toggled.connect(lambda v, f=fn: self._preload_toggle(f, v))
-            row.addWidget(tog)
-            row.addWidget(QLabel(fn))
-            row.addStretch()
-            w = QWidget()
-            w.setLayout(row)
-            self._preload_container.addWidget(w)
-
-    def _preload_toggle(self, filename, val):
-        if val:
-            if filename not in self._selected_preload:
-                self._selected_preload.append(filename)
-        else:
-            if filename in self._selected_preload:
-                self._selected_preload.remove(filename)
-        self._auto_save()
-
-    # ──────────────────────────────────
     #  页面切换
     # ──────────────────────────────────
 
@@ -2836,11 +2861,11 @@ class App(QMainWindow):
             "cdp_port": self._cp_ent.text(),
             "debug_main": self._tog_dm.isChecked(),
             "debug_frida": self._tog_df.isChecked(),
-            "selected_preload_scripts": list(self._selected_preload),
             "extract_packages_dir": self._ext_path_ent.text(),
             "extract_custom_patterns": dict(self._ext_custom_patterns),
             "auto_decompile": self._tog_auto_dec.isChecked(),
             "auto_scan": self._tog_auto_scan.isChecked(),
+            "global_hook_scripts": list(self._global_hook_scripts),
         }
         _save_cfg(data)
 
@@ -2898,22 +2923,15 @@ class App(QMainWindow):
         except ValueError:
             self._log_add("error", "[gui] 端口号无效")
             return
-        scripts_dir = os.path.join(_BASE_DIR, "userscripts")
-        selected_files = [os.path.join(scripts_dir, fn) for fn in self._selected_preload]
         opts = CliOptions(
             cdp_port=cp,
             debug_main=self._tog_dm.isChecked(),
             debug_frida=self._tog_df.isChecked(),
-            scripts_dir=scripts_dir,
-            script_files=selected_files)
+            scripts_dir="",
+            script_files=[])
         logger = Logger(opts)
         logger.set_output_callback(lambda lv, tx: self._log_q.put((lv, tx)))
-        us = load_userscripts_by_files(selected_files) if selected_files else []
-        if us:
-            logger.info(f"[脚本] 已加载 {len(us)} 个")
-        else:
-            logger.info("[脚本] 无脚本")
-        self._engine = DebugEngine(opts, logger, us)
+        self._engine = DebugEngine(opts, logger)
         self._navigator = MiniProgramNavigator(self._engine)
         self._auditor = CloudAuditor(self._engine)
         self._engine.on_status_change(lambda s: self._sts_q.put(s))
@@ -3115,6 +3133,8 @@ class App(QMainWindow):
     def _do_go(self):
         r = self._sel_route()
         if r and self._engine and self._loop:
+            if r in self._flat_routes:
+                self._nav_route_idx = self._flat_routes.index(r)
             asyncio.run_coroutine_threadsafe(
                 self._anav("navigate_to", r, "跳转"), self._loop)
 
@@ -3193,31 +3213,33 @@ class App(QMainWindow):
         self._btn_auto.setEnabled(True)
 
     def _do_prev(self):
-        if not self._all_routes:
+        routes = self._flat_routes or self._all_routes
+        if not routes:
             self._log_add("error", "[导航] 请先获取路由")
             return
         if self._nav_route_idx <= 0:
-            self._nav_route_idx = len(self._all_routes) - 1
+            self._nav_route_idx = len(routes) - 1
         else:
             self._nav_route_idx -= 1
-        route = self._all_routes[self._nav_route_idx]
+        route = routes[self._nav_route_idx]
         self._select_tree_route(route)
-        self._log_add("info", f"[导航] 上一个: {route} ({self._nav_route_idx + 1}/{len(self._all_routes)})")
+        self._log_add("info", f"[导航] 上一个: {route} ({self._nav_route_idx + 1}/{len(routes)})")
         if self._engine and self._loop:
             asyncio.run_coroutine_threadsafe(
                 self._anav("navigate_to", route, "跳转"), self._loop)
 
     def _do_next(self):
-        if not self._all_routes:
+        routes = self._flat_routes or self._all_routes
+        if not routes:
             self._log_add("error", "[导航] 请先获取路由")
             return
-        if self._nav_route_idx >= len(self._all_routes) - 1:
+        if self._nav_route_idx >= len(routes) - 1:
             self._nav_route_idx = 0
         else:
             self._nav_route_idx += 1
-        route = self._all_routes[self._nav_route_idx]
+        route = routes[self._nav_route_idx]
         self._select_tree_route(route)
-        self._log_add("info", f"[导航] 下一个: {route} ({self._nav_route_idx + 1}/{len(self._all_routes)})")
+        self._log_add("info", f"[导航] 下一个: {route} ({self._nav_route_idx + 1}/{len(routes)})")
         if self._engine and self._loop:
             asyncio.run_coroutine_threadsafe(
                 self._anav("navigate_to", route, "跳转"), self._loop)
@@ -3320,6 +3342,9 @@ class App(QMainWindow):
             parts = p.split("/")
             g = parts[0] if len(parts) > 1 else "(root)"
             groups.setdefault(g, []).append(p)
+
+        flat = []  # tree visual order for prev/next
+
         tl = [p for p in pages if p in tabs]
         if tl:
             nd = QTreeWidgetItem(["TabBar"])
@@ -3330,6 +3355,7 @@ class App(QMainWindow):
                 child = QTreeWidgetItem([d])
                 child.setData(0, Qt.UserRole, p)
                 nd.addChild(child)
+                flat.append(p)
         for g in sorted(groups):
             nd = QTreeWidgetItem([g])
             self._tree.addTopLevelItem(nd)
@@ -3340,7 +3366,15 @@ class App(QMainWindow):
                 child = QTreeWidgetItem([d])
                 child.setData(0, Qt.UserRole, p)
                 nd.addChild(child)
+                flat.append(p)
+
+        self._flat_routes = flat
         self._tree.setUpdatesEnabled(True)
+
+        # 默认选中并定位到第一个页面
+        if flat and self._nav_route_idx < 0:
+            self._nav_route_idx = 0
+            self._select_tree_route(flat[0])
 
     def _select_tree_route(self, route):
         """Select the tree item matching the given route path."""
@@ -3606,17 +3640,25 @@ class App(QMainWindow):
             lb.setText(f"{name}: {'已连接' if on else '未连接'}")
             lb.setStyleSheet(f"color: {c['success'] if on else c['text2']};")
         # 断开时立即禁用（除了已有路由时保留导航按钮）
-        if not is_connected:
+        if not is_connected and self._miniapp_connected:
             if not self._all_routes:
                 self._nav_btns(False)
             self._btn_vc_enable.setEnabled(False)
             self._btn_vc_disable.setEnabled(False)
             self._vc_status_lbl.setText("状态: 未连接小程序")
+            # 清除注入标记，切换小程序时全局脚本会重新注入
+            self._hook_injected.clear()
+            self._hook_refresh()
             # 已有路由数据时不清除侧栏信息（短暂断连不影响）
             if not self._all_routes:
                 self._sb_fetch_gen += 1
                 gen = self._sb_fetch_gen
                 QTimer.singleShot(5000, lambda: self._delayed_clear_app_info(gen))
+        # 小程序连接时，独立定时器触发全局 Hook 注入（不受 CDP 等状态变化影响）
+        if is_connected and not self._miniapp_connected and self._global_hook_scripts:
+            self._global_inject_gen += 1
+            _gi_gen = self._global_inject_gen
+            QTimer.singleShot(1500, lambda: self._do_global_inject(_gi_gen))
         # 连接时延迟启用，等连接稳定（防止重启时反复抖动）
         self._vc_stable_gen += 1
         gen_stable = self._vc_stable_gen
@@ -3661,6 +3703,11 @@ class App(QMainWindow):
         elif kind == "current":
             r = item[1]
             self._route_lbl.setText(f"当前路由: /{r}" if r else "当前路由: --")
+            if r:
+                routes = self._flat_routes or self._all_routes
+                if r in routes:
+                    self._nav_route_idx = routes.index(r)
+                    self._select_tree_route(r)
         elif kind == "progress":
             _, i, total, route = item
             if total > 0:
