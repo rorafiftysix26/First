@@ -4,7 +4,9 @@ DebugEngine - wraps debug_server, proxy_server, frida_server into a reusable cla
 import asyncio
 import json
 import random
+import platform
 import re
+import subprocess
 import sys
 from collections import Counter
 from pathlib import Path
@@ -434,66 +436,95 @@ class DebugEngine:
 
     # ── Frida ──
 
-    async def _start_frida(self):
-        logger = self.logger
+    # ── Frida: platform helpers ──
+
+    def _get_project_root(self):
+        if getattr(sys, 'frozen', False):
+            return Path(getattr(sys, '_MEIPASS', Path(sys.executable).parent)).resolve()
+        return Path(__file__).parent.parent.resolve()
+
+    def _find_wmpf_pids_win(self):
+        """Windows: find main WeChatAppEx.exe PID via ppid frequency."""
         device = frida.get_local_device()
         processes = device.enumerate_processes(scope="metadata")
-        wmpf_processes = [p for p in processes if p.name == "WeChatAppEx.exe"]
-        if not wmpf_processes:
+        wmpf_procs = [p for p in processes if p.name == "WeChatAppEx.exe"]
+        if not wmpf_procs:
             raise RuntimeError("[frida] WeChatAppEx.exe process not found")
 
-        wmpf_ppids = []
-        for p in wmpf_processes:
-            ppid = p.parameters.get("ppid", 0)
-            wmpf_ppids.append(ppid if ppid else 0)
+        ppids = [p.parameters.get("ppid", 0) or 0 for p in wmpf_procs]
+        main_pid = Counter(ppids).most_common(1)[0][0]
+        if main_pid == 0:
+            raise RuntimeError("[frida] WeChatAppEx.exe main process not found")
 
-        if not wmpf_ppids:
-            raise RuntimeError("[frida] WeChatAppEx.exe process not found")
+        main_proc = next((p for p in processes if p.pid == main_pid), None)
+        if main_proc is None:
+            raise RuntimeError("[frida] could not locate main WMPF process")
 
-        pid_counts = Counter(wmpf_ppids)
-        wmpf_pid = pid_counts.most_common(1)[0][0]
+        proc_path = main_proc.parameters.get("path", "")
+        nums = re.findall(r"\d+", proc_path)
+        if not nums:
+            raise RuntimeError("[frida] cannot detect WMPF version from path")
+        version = int(nums[-1])
+        if version == 0:
+            raise RuntimeError("[frida] invalid WMPF version")
 
-        if wmpf_pid == 0:
-            raise RuntimeError("[frida] WeChatAppEx.exe process not found")
+        return [main_pid], version
 
-        wmpf_process = None
-        for p in processes:
-            if p.pid == wmpf_pid:
-                wmpf_process = p
-                break
+    def _find_wmpf_pids_darwin(self):
+        """macOS: find WeChatAppEx PIDs via pgrep, version via Info.plist."""
+        try:
+            out = subprocess.check_output(
+                ["pgrep", "-f", "/MacOS/WeChatAppEx.app/Contents/MacOS/WeChatAppEx"],
+                text=True,
+            ).strip()
+            pids = [int(p) for p in out.splitlines() if p.strip()]
+        except (subprocess.CalledProcessError, ValueError):
+            pids = []
+        if not pids:
+            raise RuntimeError("[frida] WeChatAppEx process not found on macOS")
 
-        if wmpf_process is None:
-            raise RuntimeError("[frida] Could not find main WMPF process")
+        try:
+            ver_out = subprocess.check_output(
+                ["defaults", "read",
+                 "/Applications/WeChat.app/Contents/MacOS/WeChatAppEx.app/Contents/Info.plist",
+                 "CFBundleVersion"],
+                text=True,
+            ).strip()
+            version = int(ver_out.split(".")[1])
+        except Exception:
+            raise RuntimeError("[frida] cannot detect WeChatAppEx version from Info.plist")
 
-        wmpf_process_path = wmpf_process.parameters.get("path", "")
-        version_matches = re.findall(r"\d+", wmpf_process_path)
-        if not version_matches:
-            raise RuntimeError("[frida] error in find wmpf version")
-        wmpf_version = int(version_matches[-1])
-        if wmpf_version == 0:
-            raise RuntimeError("[frida] error in find wmpf version")
+        return pids, version
 
-        session = device.attach(wmpf_pid)
+    async def _start_frida(self):
+        logger = self.logger
+        is_mac = sys.platform == "darwin"
+        platform_dir = "mac" if is_mac else "win"
 
-        if getattr(sys, 'frozen', False):
-            # PyInstaller onefile: resources in _MEIPASS; onedir: next to exe
-            project_root = Path(getattr(sys, '_MEIPASS', Path(sys.executable).parent)).resolve()
+        # Find PIDs and version
+        if is_mac:
+            pids, wmpf_version = self._find_wmpf_pids_darwin()
         else:
-            project_root = Path(__file__).parent.parent.resolve()
+            pids, wmpf_version = self._find_wmpf_pids_win()
 
+        # Load hook script and config
+        project_root = self._get_project_root()
         hook_path = project_root / "frida" / "hook.js"
         if not hook_path.exists():
             raise RuntimeError("[frida] hook script not found")
-        script_content = hook_path.read_text(encoding="utf-8")
 
-        config_path = project_root / "frida" / "config" / f"addresses.{wmpf_version}.json"
+        config_path = project_root / "frida" / "config" / platform_dir / f"addresses.{wmpf_version}.json"
         if not config_path.exists():
-            raise RuntimeError(f"[frida] version config not found: {wmpf_version}")
-        config_content = config_path.read_text(encoding="utf-8")
-        config_content = json.dumps(json.loads(config_content))
+            raise RuntimeError(f"[frida] version config not found: {platform_dir}/{wmpf_version}")
 
+        script_content = hook_path.read_text(encoding="utf-8")
+        config_content = json.dumps(json.loads(config_path.read_text(encoding="utf-8")))
         final_script = script_content.replace("@@CONFIG@@", config_content)
-        script = session.create_script(final_script)
+
+        # Inject into all target PIDs
+        device = frida.get_local_device()
+        session = None
+        script = None
 
         def on_message(message, data):
             if message.get("type") == "error":
@@ -501,10 +532,22 @@ class DebugEngine:
                 return
             logger.frida_debug("[frida client]", message.get("payload", ""))
 
-        script.on("message", on_message)
-        script.load()
+        for pid in pids:
+            try:
+                s = device.attach(pid)
+                sc = s.create_script(final_script)
+                sc.on("message", on_message)
+                sc.load()
+                logger.info(f"[frida] injected pid={pid}, version={wmpf_version}")
+                # Keep first successful session/script as primary
+                if session is None:
+                    session, script = s, sc
+            except Exception as e:
+                logger.error(f"[frida] failed to inject pid={pid}: {e}")
 
-        logger.info(f"[frida] script loaded, WMPF version: {wmpf_version}, pid: {wmpf_pid}")
+        if session is None:
+            raise RuntimeError("[frida] failed to inject any WeChatAppEx process")
+
+        logger.info(f"[frida] ready ({platform_dir}), version={wmpf_version}, {len(pids)} process(es)")
         logger.info("[frida] you can now open any miniapps")
-
         return session, script

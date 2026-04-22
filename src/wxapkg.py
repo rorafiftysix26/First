@@ -210,14 +210,33 @@ def find_wxapkg_files(packages_dir: str) -> List[dict]:
 
 
 def get_default_packages_dir() -> Optional[str]:
-    """获取默认的微信小程序包路径（Windows）"""
-    if os.name != "nt":
-        return None
+    """获取默认的微信小程序包路径（Windows / macOS）"""
+    import sys
     user_home = os.path.expanduser("~")
-    pkg_dir = os.path.join(
-        user_home, "AppData", "Roaming", "Tencent",
-        "xwechat", "radium", "Applet", "packages"
-    )
-    if os.path.isdir(pkg_dir):
-        return pkg_dir
+    if sys.platform == "darwin":
+        # macOS: ~/Library/Containers/com.tencent.xinWeChat/Data/Documents/app_data/radium/users/{wxid}/applet/packages
+        users_dir = os.path.join(
+            user_home, "Library", "Containers", "com.tencent.xinWeChat",
+            "Data", "Documents", "app_data", "radium", "users"
+        )
+        if not os.path.isdir(users_dir):
+            return None
+        # 找最近修改的用户目录
+        user_dirs = [
+            os.path.join(users_dir, d)
+            for d in os.listdir(users_dir)
+            if os.path.isdir(os.path.join(users_dir, d)) and not d.startswith(".")
+        ]
+        for ud in sorted(user_dirs, key=os.path.getmtime, reverse=True):
+            pkg_dir = os.path.join(ud, "applet", "packages")
+            if os.path.isdir(pkg_dir):
+                return pkg_dir
+        return None
+    elif os.name == "nt":
+        pkg_dir = os.path.join(
+            user_home, "AppData", "Roaming", "Tencent",
+            "xwechat", "radium", "Applet", "packages"
+        )
+        if os.path.isdir(pkg_dir):
+            return pkg_dir
     return None

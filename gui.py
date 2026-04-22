@@ -641,8 +641,9 @@ def _make_entry(placeholder="", width=None):
 class App(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("First")
-        _ico = os.path.join(_BASE_DIR, "icon.ico")
+        self._os_tag = "macOS" if sys.platform == "darwin" else "Windows"
+        self.setWindowTitle(f"First-{self._os_tag}")
+        _ico = os.path.join(_BASE_DIR, "icon.png")
         if os.path.exists(_ico):
             self.setWindowIcon(QIcon(_ico))
         self.resize(960, 620)
@@ -726,14 +727,14 @@ class App(QMainWindow):
         logo_row.setContentsMargins(0, 0, 0, 0)
         logo_row.setSpacing(6)
         logo_row.addStretch()
-        _ico_path = os.path.join(_BASE_DIR, "icon.ico")
+        _ico_path = os.path.join(_BASE_DIR, "icon.png")
         if os.path.exists(_ico_path):
             _ico_lbl = QLabel()
             _pix = QPixmap(_ico_path).scaled(20, 20, Qt.KeepAspectRatio, Qt.SmoothTransformation)
             _ico_lbl.setPixmap(_pix)
             _ico_lbl.setFixedSize(20, 20)
             logo_row.addWidget(_ico_lbl)
-        self._sb_logo = QLabel("First")
+        self._sb_logo = QLabel(f"First-{self._os_tag}")
         self._sb_logo.setObjectName("sb_logo")
         logo_row.addWidget(self._sb_logo)
         logo_row.addStretch()
@@ -818,6 +819,11 @@ class App(QMainWindow):
             QDesktopServices.openUrl(QUrl("https://github.com/Spade-sec/First")),
             self._log_add("info", "[gui] 已打开 GitHub 页面"))
         sb_lay.addWidget(sb_gh)
+        sb_ver = QLabel("v1.0.7")
+        sb_ver.setObjectName("sb_theme")
+        sb_ver.setAlignment(Qt.AlignCenter)
+        sb_ver.setFont(QFont(_FN, 7))
+        sb_lay.addWidget(sb_ver)
         sb_lay.addSpacing(12)
         self._update_theme_label()
 
@@ -1366,15 +1372,8 @@ class App(QMainWindow):
         path_row.addWidget(_make_label("Applet目录", bold=True))
         self._ext_path_ent = _make_entry("wxapkg 包目录路径...")
         # 自动检测默认路径
-        default_pkg = ""
-        if os.name == "nt":
-            user_home = os.path.expanduser("~")
-            default_pkg = os.path.join(
-                user_home, "AppData", "Roaming", "Tencent",
-                "xwechat", "radium", "Applet", "packages"
-            )
-            if not os.path.isdir(default_pkg):
-                default_pkg = ""
+        from src.wxapkg import get_default_packages_dir
+        default_pkg = get_default_packages_dir() or ""
         saved_path = self._cfg.get("extract_packages_dir", "")
         if saved_path:
             self._ext_path_ent.setText(saved_path)
@@ -1635,23 +1634,22 @@ class App(QMainWindow):
 
     def _ext_auto_detect(self):
         """自动检测默认路径"""
-        if os.name == "nt":
-            user_home = os.path.expanduser("~")
-            default_pkg = os.path.join(
-                user_home, "AppData", "Roaming", "Tencent",
-                "xwechat", "radium", "Applet", "packages"
-            )
-            if os.path.isdir(default_pkg):
-                if self._ext_path_ent.text().strip() == default_pkg:
-                    # 路径相同但强制刷新
-                    self._ext_refresh_apps()
-                else:
-                    self._ext_path_ent.setText(default_pkg)
-                self._ext_log("已自动检测到 Applet 目录")
+        from src.wxapkg import get_default_packages_dir
+        default_pkg = get_default_packages_dir()
+        if default_pkg:
+            if self._ext_path_ent.text().strip() == default_pkg:
+                self._ext_refresh_apps()
             else:
-                self._ext_log("未找到默认 Applet 目录，请手动选择")
+                self._ext_path_ent.setText(default_pkg)
+            self._ext_log(f"已自动检测到 Applet 目录: {default_pkg}")
         else:
-            self._ext_log("非 Windows 系统，请手动选择目录")
+            hint = ("~/Library/Containers/com.tencent.xinWeChat/Data/Documents/"
+                    "app_data/radium/users/<微信用户ID>/applet/packages"
+                    if sys.platform == "darwin" else
+                    "未找到默认 Applet 目录")
+            self._ext_log(f"未自动检测到目录，请手动选择。macOS 参考路径: {hint}"
+                          if sys.platform == "darwin" else
+                          f"{hint}，请手动选择")
 
     def _ext_auto_process_new(self, new_ids):
         """对新增的小程序自动执行反编译/扫描（按开关状态）"""
@@ -3939,7 +3937,7 @@ if __name__ == "__main__":
 
     app = QApplication(sys.argv)
     app.setFont(QFont(_FN, 9))
-    _ico = os.path.join(_BASE_DIR, "icon.ico")
+    _ico = os.path.join(_BASE_DIR, "icon.png")
     if os.path.exists(_ico):
         app.setWindowIcon(QIcon(_ico))
     window = App()
